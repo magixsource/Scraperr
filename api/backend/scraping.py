@@ -28,6 +28,17 @@ def is_same_domain(url: str, original_url: str) -> bool:
     return parsed_url.netloc == parsed_original_url.netloc or parsed_url.netloc == ""
 
 
+def is_valid_url(url: str) -> bool:
+    try:
+        result = urlparse(url)
+        return all([
+            result.scheme in {"http", "https"},  # 协议校验
+            bool(result.netloc)  # 域名/IP校验
+        ])
+    except ValueError:
+        return False
+
+
 def clean_xpath(xpath: str) -> str:
     parts = xpath.split("/")
     clean_parts: list[str] = []
@@ -89,18 +100,21 @@ def create_driver(proxies: Optional[list[str]] = []):
 
 
 async def make_site_request(
-    url: str,
-    headers: Optional[dict[str, Any]],
-    multi_page_scrape: bool = False,
-    visited_urls: set[str] = set(),
-    pages: set[tuple[str, str]] = set(),
-    original_url: str = "",
-    proxies: Optional[list[str]] = [],
-    site_map: Optional[dict[str, Any]] = None,
+        url: str,
+        headers: Optional[dict[str, Any]],
+        multi_page_scrape: bool = False,
+        visited_urls: set[str] = set(),
+        pages: set[tuple[str, str]] = set(),
+        original_url: str = "",
+        proxies: Optional[list[str]] = [],
+        site_map: Optional[dict[str, Any]] = None,
 ) -> None:
     """Make basic `GET` request to site using Selenium."""
     # Check if URL has already been visited
     if url in visited_urls:
+        return
+    if not is_valid_url(url):
+        LOG.warning(f"Invalid URL: {url}")
         return
 
     driver = create_driver(proxies)
@@ -181,12 +195,12 @@ async def collect_scraped_elements(page: tuple[str, str], xpaths: list[Element])
 
 
 async def scrape(
-    url: str,
-    xpaths: list[Element],
-    headers: Optional[dict[str, Any]],
-    multi_page_scrape: bool = False,
-    proxies: Optional[list[str]] = [],
-    site_map: Optional[SiteMap] = None,
+        url: str,
+        xpaths: list[Element],
+        headers: Optional[dict[str, Any]],
+        multi_page_scrape: bool = False,
+        proxies: Optional[list[str]] = [],
+        site_map: Optional[SiteMap] = None,
 ):
     visited_urls: set[str] = set()
     pages: set[tuple[str, str]] = set()
